@@ -9,12 +9,6 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import globallisteners.GlobalKeyListener;
 import util.ANSIUtils;
 
-/** Fazer um prototipo em janela grafica, desenhando com PixelWriter
- * a sala atual, o mini mapa das salas ao redor da sala atual,
- * e uma tecla que mostra um super mapa colorindo com uma cor
- * diferente a sala atual 
- */
-
 public class LabGame {
 
 	Random random = new Random(new SecureRandom().nextInt(Integer.MAX_VALUE));
@@ -68,20 +62,20 @@ public class LabGame {
 	}
 	
 	static void printError(String string) {
-		ANSIUtils.moveCursorTo(0, 39);
+		ANSIUtils.moveCursorTo(0, 38);
 		System.out.print(ANSIUtils.resetFormaters);
 		for (int n = 0; n < 130; n++)
 			System.out.print(" ");
-		ANSIUtils.moveCursorTo(0, 39);
+		ANSIUtils.moveCursorTo(0, 38);
 		System.out.print(ANSIUtils.fontColorDarkRed + string + ANSIUtils.resetFormaters);
 	}
 
 	static void print(String string) {
-		ANSIUtils.moveCursorTo(0, 40);
+		ANSIUtils.moveCursorTo(0, 39);
 		System.out.print(ANSIUtils.resetFormaters);
 		for (int n = 0; n < 130; n++)
 			System.out.print(" ");
-		ANSIUtils.moveCursorTo(0, 40);
+		ANSIUtils.moveCursorTo(0, 39);
 		System.out.print(string + ANSIUtils.resetFormaters);
 	}
 
@@ -99,6 +93,7 @@ public class LabGame {
 		visited = new boolean[mapH][mapW];
 		mapX = mapStartX = startX;
 		mapY = mapStartY = startY;
+		visited[startY][startX] = true;
 		generateCurrentRoom();
 	}
 
@@ -106,8 +101,11 @@ public class LabGame {
 		resetMap(map.length, map[0].length, mapStartX, mapStartY);
 	}
 
-	String getRoom(int x, int y)
-		{ return map[y][x]; }
+	String getRoom(int x, int y) {
+		if (!isValidMapPosition(x, y))
+			return null;
+		return map[y][x];
+	}
 
 	String getCurrentRoom() {
 		if (getRoom(mapX, mapY) == null)
@@ -115,8 +113,10 @@ public class LabGame {
 		return getRoom(mapX, mapY);
 	}
 
-	void setRoom(int x, int y, String dirs)
-		{ map[y][x] = dirs; }
+	void setRoom(int x, int y, String dirs) {
+		if (isValidMapPosition(x, y))
+			map[y][x] = dirs;
+	}
 
 	void setCurrentRoom(String dirs)
 		{ setRoom(mapX, mapY, dirs); }
@@ -146,8 +146,7 @@ public class LabGame {
 			throw new RuntimeException("Invalid map position");
 		this.mapX = mapX;
 		this.mapY = mapY;
-		if (getCurrentRoom() == null)
-			generateCurrentRoom();
+		generateCurrentRoom();
 	}
 
 	public void goTo(char dir) {
@@ -162,7 +161,8 @@ public class LabGame {
 			mapY++;
 		else
 			throw new RuntimeException(dir + " - Invalid direction (Must be in \"asdw\" format)");
-		visited[mapY][mapX] = true;
+		if (isValidMapPosition(mapX, mapY))
+			visited[mapY][mapX] = true;
 	}
 
 	static String opositeDir(char dir) {
@@ -209,7 +209,7 @@ public class LabGame {
 		{ generateRoom(mapX, mapY); }
 
 	Boolean[] getDoors(int mapX, int mapY) {
-		if (getRoom(mapX, mapY) == null)
+		if (!isValidMapPosition(mapX, mapY))
 			return null;
 		return new Boolean[] { getRoom(mapX, mapY).contains("a"), getRoom(mapX, mapY).contains("w"),
 														getRoom(mapX, mapY).contains("d"), getRoom(mapX, mapY).contains("s") };
@@ -220,29 +220,32 @@ public class LabGame {
 
 	void drawCurrentRoom() {
 		String room = getCurrentRoom(), roomColor = getRoomColor(mapX, mapY);
-		for (int y = 0; y < 38; y++)
-			for (int x = 1; x < 77; x += 2) {
+		int xx = 1, yy = 1, h = 36, w = h * 2;
+		for (int y = yy; y < yy + h; y++)
+			for (int x = xx; x < xx + w; x += 2) {
 				ANSIUtils.moveCursorTo(x, y);
-				if ((x <= 1 || x >= 74 || y <= 1 || y == 37) &&
-						(x < 29 || x > 49 || !room.contains(y == 0 ? "w" : "s")) &&
-						(y < 15 || y > 23 || !room.contains(x <= 1 ? "a" : "d"))	)
+				if ((x <= xx + 1 || x >= xx + w - 2 || y <= yy || y >= yy + h - 1) &&
+						(x < xx + w / 2 - 12 || x > xx + w / 2 + 12 || !room.contains(y <= yy ? "w" : "s")) &&
+						(y < yy + h / 2 - 6 || y > yy + h / 2 + 6 || !room.contains(x <= xx + 1 ? "a" : "d")))
 							System.out.print(roomColor + "  ");				System.out.print(ANSIUtils.resetFormaters + "  ");
 
 			}
 		
 		for (int y = 0; y < 3; y++)
 			for (int x = 0; x < 3; x++)
-				drawMiniRoom(mapX + (-1 + x), mapY + (-1 + y), 81 + x * 12, 1 + y * 6);
+				drawMiniRoom(mapX + (-1 + x), mapY + (-1 + y), 75 + x * 12, 1 + y * 6);
 		
-		for (int y = 0; y < 17; y++)
-			for (int x = 0; x < 17; x++)
-				drawDotRoom(mapX + (-8 + x), mapY + (-8 + y), 119 + x * 2, 1 + y);
+		for (int y = 0; y < 22; y++)
+			for (int x = 0; x < 22; x++)
+				drawDotRoom(mapX + (-11 + x), mapY + (-11 + y), 113 + x * 2, 1 + y);
 
 		print("");		printError(error);
 		error = "";
 	}
 	
 	String getRoomColor(int roomX, int roomY) {
+		if (getRoom(roomX, roomY) == null)
+			return null;
 		return roomX == mapX && roomY == mapY ? ANSIUtils.bgColorLightBlue :
 			visited[roomY][roomX] ? ANSIUtils.bgColorDarkGreen : ANSIUtils.bgColorDarkYellow;
 	}
@@ -252,7 +255,9 @@ public class LabGame {
 		for (int yy = 0; yy < 6; yy++)
 			for (int xx = 0; xx < 12; xx += 2) {
 				ANSIUtils.moveCursorTo(x + xx, y + yy);
-				if (room == null)
+				if (!isValidMapPosition(roomX, roomY))
+					System.out.print(ANSIUtils.bgColorDarkRed + "  ");
+				else if (room == null)
 					System.out.print(ANSIUtils.bgColorLightBlack + "  ");
 				else if ((xx <= 1 || xx >= 10 || yy == 0 || yy == 5) &&
 						(xx < 4 || xx > 7 || !room.contains(yy == 0 ? "w" : "s")) &&
@@ -264,8 +269,8 @@ public class LabGame {
 
 	void drawDotRoom(int roomX, int roomY, int x, int y) {
 		ANSIUtils.moveCursorTo(x, y);
-		System.out.print((getRoom(roomX, roomY) == null ?
-			ANSIUtils.bgColorLightBlack : getRoomColor(roomX, roomY)) + "  ");
+		System.out.print((!isValidMapPosition(roomX, roomY) ? ANSIUtils.bgColorDarkRed :
+			getRoom(roomX, roomY) == null ? ANSIUtils.bgColorLightBlack : getRoomColor(roomX, roomY)) + "  ");
 	}
 
 }
